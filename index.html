@@ -141,8 +141,7 @@ const COLS=101,ROWS=77,TILE=40,MAX_COINS=180,STARTING_COINS=54,MAX_COINS_ON_FIEL
 
 const params=new URLSearchParams(location.search);
 const readInt=(name,fallback)=>{const raw=params.get(name);return raw!==null&&/^\d+$/.test(raw)&&Number.isSafeInteger(Number(raw))?Number(raw):fallback};
-const sessionCfg={sessionId:readInt('sid',0),userId:readInt('uid',0),maxPayout:readInt('max',59000),botUsername:String(params.get('bot')||'').replace(/^@/,'')};
-const rewardLimit=Math.min(sessionCfg.maxPayout,readInt('payout',sessionCfg.maxPayout));
+const sessionCfg={sessionId:readInt('sid',0),userId:readInt('uid',0),botUsername:String(params.get('bot')||'').replace(/^@/,'')};
 const resultKey=sessionCfg.sessionId?'maze_result_v1_'+sessionCfg.sessionId:null;
 let claimInFlight=false,claimSent=false,finalReward=0;
 function saveResult(){if(!resultKey)return;try{localStorage.setItem(resultKey,JSON.stringify({earnings:finalReward,won:state==='won',sent:claimSent}))}catch{}}
@@ -294,8 +293,8 @@ function endRun(won){
  if(state!=='running'||runEnded)return;
  runEnded=true;state=won?'won':'lost';stopLoop();resetInput();
  clearTimeout(toastTimer);ui.toast.classList.remove('show');ui.toast.textContent='';
- if(won){const bonus=Math.max(0,Math.min(EXIT_BONUS,rewardLimit-runReward));runReward+=bonus;creditBalance(bonus)}
- finalReward=Math.min(rewardLimit,Math.max(0,Math.floor(runReward)));balance=finalReward;setBalance();saveResult();playSound(won?'win':'lose');haptic(won?'success':'error');
+ if(won){const bonus=EXIT_BONUS;runReward+=bonus;creditBalance(bonus)}
+ finalReward=Math.max(0,Math.floor(runReward));balance=finalReward;setBalance();saveResult();playSound(won?'win':'lose');haptic(won?'success':'error');
  showOverlay(won?'win':'lose');updateHud();updateStatus(performance.now());
 }
 function activateBoost(now){if(state!=='running'||stamina<99||boostUntil>now)return false;stamina=0;boostUntil=now+BOOST_MS;boostCooldownUntil=now+BOOST_COOLDOWN_MS;updateStaminaHud();message('РЫВОК');burst(player.fx,player.fy,'#ffd18a',16,now);addWave(player.fx,player.fy,'#ffd18a',now);playSound('boost');haptic('light');return true}
@@ -339,7 +338,7 @@ function movePlayer(now){
 }
 function collectAtPlayer(now){
  const ci=coins.findIndex(c=>c.x===player.x&&c.y===player.y);
- if(ci>=0){const c=coins.splice(ci,1)[0];runCoins++;const gain=Math.max(0,Math.min(c.value,rewardLimit-runReward));runReward+=gain;updateHud();coinEffects.push({x:c.x+.5,y:c.y+.5,value:gain,start:now,sparks:Array.from({length:8},()=>({angle:Math.random()*Math.PI*2,speed:.55+Math.random()*1.35,size:.045+Math.random()*.075}))});if(coinEffects.length>4)coinEffects.shift();creditBalance(gain);playSound('coin');haptic('light');message(`+${fmt(gain)} GRAM`)}
+ if(ci>=0){const c=coins.splice(ci,1)[0];runCoins++;const gain=c.value;runReward+=gain;updateHud();coinEffects.push({x:c.x+.5,y:c.y+.5,value:gain,start:now,sparks:Array.from({length:8},()=>({angle:Math.random()*Math.PI*2,speed:.55+Math.random()*1.35,size:.045+Math.random()*.075}))});if(coinEffects.length>4)coinEffects.shift();creditBalance(gain);playSound('coin');haptic('light');message(`+${fmt(gain)} GRAM`)}
  const bi=boostCells.findIndex(c=>c.x===player.x&&c.y===player.y);
  if(bi>=0){boostCells.splice(bi,1);collectLightning(now);boostRespawnAt=now+7000}
  const si=extraShieldCells.findIndex(c=>c.x===player.x&&c.y===player.y);if(si>=0){extraShieldCells.splice(si,1);shieldCharge=1;burst(player.fx,player.fy,'#86deff',14,now);playSound('shield');haptic('light');updateHud();message('ЩИТ ГОТОВ')}if(shieldCell&&player.x===shieldCell.x&&player.y===shieldCell.y){shieldCell=null;shieldCharge=1;shieldRespawnAt=now+11500;burst(player.fx,player.fy,'#86deff',14,now);playSound('shield');haptic('light');updateHud();message('ЩИТ ГОТОВ')}
@@ -743,7 +742,7 @@ window.addEventListener('telegram-sdk-ready',initTelegram);
 if(window.ResizeObserver)new ResizeObserver(resizeCanvas).observe(canvas);
 syncSound();syncViewport();initTelegram();
 newRun();state='title';showOverlay('title');
-if(resultKey){try{const saved=JSON.parse(localStorage.getItem(resultKey)||'null');if(saved&&Number.isSafeInteger(saved.earnings)&&saved.earnings>=0){finalReward=Math.min(rewardLimit,saved.earnings);runReward=finalReward;balance=finalReward;claimSent=saved.sent===true;runEnded=true;state=saved.won?'won':'lost';showOverlay(saved.won?'win':'lose')}}catch{}}
+if(resultKey){try{const saved=JSON.parse(localStorage.getItem(resultKey)||'null');if(saved&&Number.isSafeInteger(saved.earnings)&&saved.earnings>=0){finalReward=saved.earnings;runReward=finalReward;balance=finalReward;claimSent=saved.sent===true;runEnded=true;state=saved.won?'won':'lost';showOverlay(saved.won?'win':'lose')}}catch{}}
 resizeCanvas();updateHud();updateStatus(performance.now());
 
 })();
